@@ -12,6 +12,7 @@ import (
 
 	"github.com/adolp26/sentinelpay/internal/config"
 	"github.com/adolp26/sentinelpay/internal/platform/database"
+	"github.com/adolp26/sentinelpay/internal/platform/httpx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -68,24 +69,19 @@ func main() {
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func readyHandler(pool *pgxpool.Pool, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
 		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 		defer cancel()
 
 		if err := pool.Ping(ctx); err != nil {
 			logger.Warn("database not ready", "error", err)
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte(`{"status":"not ready"}`))
+			httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not ready"})
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ready"}`))
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	}
 }
