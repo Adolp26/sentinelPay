@@ -12,6 +12,7 @@ import (
 
 	"github.com/adolp26/sentinelpay/internal/config"
 	"github.com/adolp26/sentinelpay/internal/platform/database"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -31,6 +32,7 @@ func main() {
 	logger.Info("database connected")
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /ready", readyHandler(pool, logger))
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -69,4 +71,21 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
+}
+
+func readyHandler(pool *pgxpool.Pool, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			logger.Warn("database not ready", "error", err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"status":"not ready"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ready"}`))
+	}
 }
