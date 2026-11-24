@@ -11,12 +11,24 @@ import (
 	"time"
 
 	"github.com/adolp26/sentinelpay/internal/config"
+	"github.com/adolp26/sentinelpay/internal/platform/database"
 )
 
 func main() {
 	cfg := config.Load()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer dbCancel()
+
+	pool, err := database.NewPool(dbCtx, cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	logger.Info("database connected")
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 

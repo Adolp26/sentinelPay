@@ -9,6 +9,7 @@ type Config struct {
 	Env            string
 	Port           string
 	RequestTimeout time.Duration
+	DatabaseURL    string
 }
 
 func Load() Config {
@@ -16,6 +17,7 @@ func Load() Config {
 		Env:            getEnv("APP_ENV", "development"),
 		Port:           getEnv("APP_PORT", "8080"),
 		RequestTimeout: getDuration("APP_REQUEST_TIMEOUT", 2*time.Second),
+		DatabaseURL:    getEnv("DATABASE_URL", ""),
 	}
 }
 
