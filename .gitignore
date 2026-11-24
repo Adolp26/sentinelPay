@@ -1,0 +1,11 @@
+# Segredos locais
+.env
+
+# Binarios
+/bin/
+*.exe
+
+# Editor / SO
+.idea/
+.vscode/
+.DS_Store
