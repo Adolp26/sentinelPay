@@ -3,6 +3,8 @@ package payment
 import (
 	"errors"
 	"time"
+
+	"golang.org/x/text/currency"
 )
 
 type Status string
@@ -22,13 +24,28 @@ func (s Status) Valid() bool {
 	return false
 }
 
+var supportedCurrencies = map[currency.Unit]bool{
+	currency.BRL: true,
+	currency.USD: true,
+	currency.EUR: true,
+}
+
 var (
-	ErrInvalidMerchantID = errors.New("merchant_id is required")
-	ErrInvalidCustomerID = errors.New("customer_id is required")
-	ErrInvalidAmount     = errors.New("amount must be positive")
-	ErrInvalidCurrency   = errors.New("currency must be a 3-letter uppercase ISO code")
-	ErrInvalidStatus     = errors.New("status is invalid")
+	ErrRequired            = errors.New("is required")
+	ErrInvalidAmount       = errors.New("must be positive")
+	ErrInvalidCurrency     = errors.New("must be an uppercase ISO 4217 code")
+	ErrUnsupportedCurrency = errors.New("is not supported")
+	ErrInvalidStatus       = errors.New("is invalid")
 )
+
+type FieldError struct {
+	Field string
+	Err   error
+}
+
+func (e FieldError) Error() string { return e.Field + " " + e.Err.Error() }
+
+func (e FieldError) Unwrap() error { return e.Err }
 
 type Payment struct {
 	ID         string    `json:"id"`
@@ -41,32 +58,37 @@ type Payment struct {
 }
 
 func (p Payment) Validate() error {
+	var errs []error
+
 	if p.MerchantID == "" {
-		return ErrInvalidMerchantID
+		errs = append(errs, FieldError{"merchant_id", ErrRequired})
 	}
 	if p.CustomerID == "" {
-		return ErrInvalidCustomerID
+		errs = append(errs, FieldError{"customer_id", ErrRequired})
 	}
 	if p.Amount <= 0 {
-		return ErrInvalidAmount
+		errs = append(errs, FieldError{"amount", ErrInvalidAmount})
 	}
-	if !validCurrency(p.Currency) {
-		return ErrInvalidCurrency
+	if err := validateCurrency(p.Currency); err != nil {
+		errs = append(errs, FieldError{"currency", err})
 	}
 	if !p.Status.Valid() {
-		return ErrInvalidStatus
+		errs = append(errs, FieldError{"status", ErrInvalidStatus})
 	}
-	return nil
+
+	return errors.Join(errs...)
 }
 
-func validCurrency(c string) bool {
-	if len(c) != 3 {
-		return false
+func validateCurrency(code string) error {
+	if code == "" {
+		return ErrRequired
 	}
-	for _, r := range c {
-		if r < 'A' || r > 'Z' {
-			return false
-		}
+	unit, err := currency.ParseISO(code)
+	if err != nil || unit.String() != code {
+		return ErrInvalidCurrency
 	}
-	return true
+	if !supportedCurrencies[unit] {
+		return ErrUnsupportedCurrency
+	}
+	return nil
 }
