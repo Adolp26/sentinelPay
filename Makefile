@@ -3,7 +3,7 @@ export
 
 BINARY := bin/api
 
-.PHONY: run build test vet fmt check up down
+.PHONY: run build test vet fmt check up down migrate-up migrate-down migrate-status
 
 run:
 	go run ./cmd/api
@@ -27,3 +27,14 @@ up:
 
 down:
 	docker compose down
+
+MIGRATIONS := migrations
+
+migrate-up:
+	goose -dir $(MIGRATIONS) postgres "$(DATABASE_URL)" up
+
+migrate-down:
+	goose -dir $(MIGRATIONS) postgres "$(DATABASE_URL)" down
+
+migrate-status:
+	goose -dir $(MIGRATIONS) postgres "$(DATABASE_URL)" status
