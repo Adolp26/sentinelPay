@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/adolp26/sentinelpay/internal/config"
+	"github.com/adolp26/sentinelpay/internal/payment"
 	"github.com/adolp26/sentinelpay/internal/platform/database"
 	"github.com/adolp26/sentinelpay/internal/platform/httpx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,6 +35,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.HandleFunc("GET /ready", readyHandler(pool, logger))
+
+	paymentHandler := payment.NewHandler(payment.NewRepository(pool), logger)
+	paymentHandler.RegisterRoutes(mux)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
